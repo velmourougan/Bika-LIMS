@@ -54,6 +54,22 @@ schema = BikaSchema.copy() + Schema((
         ),
     ),
                                      
+    BooleanField('Closed',
+        default = False,
+        widget = atapi.BooleanWidget(
+            label = _("Closed"),
+            description = _("The validation process has been finished")
+        ),
+    ),
+                                     
+    BooleanField('Succeed',
+        default = False,
+        widget = atapi.BooleanWidget(
+            label = _("Succeed"),
+            description = _("The validation has been finished successfully")
+        ),
+    ),
+                                     
     TextField('Remarks',
         default_content_type = 'text/x-web-intelligent',
         allowable_content_types = ('text/x-web-intelligent',),
