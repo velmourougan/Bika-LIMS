@@ -6,6 +6,8 @@ from bika.lims import bikaMessageFactory as _
 from bika.lims.browser.widgets import DateTimeWidget
 from bika.lims.config import PROJECTNAME
 from bika.lims.content.bikaschema import BikaSchema
+from bika.lims.interfaces import IInstrumentCertification
+from zope.interface import implements
 
 schema = BikaSchema.copy() + Schema((
     
@@ -68,6 +70,7 @@ schema = BikaSchema.copy() + Schema((
 ))
 
 class InstrumentCertification(BaseFolder):
+    implements(IInstrumentCertification)
     security = ClassSecurityInfo()
     schema = schema
     displayContentsTab = False

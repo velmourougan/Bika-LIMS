@@ -125,6 +125,8 @@ class IContainerTypes(Interface):
     ""
 class IInstrument(Interface):
     ""
+class IInstrumentCertification(Interface):
+    ""
 class IInstruments(Interface):
     ""
 class IInstrumentType(Interface):

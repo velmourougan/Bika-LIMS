@@ -45,6 +45,8 @@ class InstrumentsView(BikaListingView):
             'Model': {'title': _('Model'),
                       'index': 'getModel',
                       'toggle': True},
+            'Certificate': {'title': _('Certificate'),
+                            'toggle':True}
         }
         self.review_states = [
             {'id':'default',
@@ -54,7 +56,8 @@ class InstrumentsView(BikaListingView):
              'columns': ['Title',
                          'Type',
                          'Brand',
-                         'Model']},
+                         'Model',
+                         'Certificate']},
             {'id':'inactive',
              'title': _('Dormant'),
              'contentFilter': {'inactive_state': 'inactive'},
@@ -62,14 +65,16 @@ class InstrumentsView(BikaListingView):
              'columns': ['Title',
                          'Type',
                          'Brand',
-                         'Model']},
+                         'Model',
+                         'Certificate']},
             {'id':'all',
              'title': _('All'),
              'contentFilter':{},
              'columns': ['Title',
                          'Type',
                          'Brand',
-                         'Model']},
+                         'Model',
+                         'Certificate']},
         ]
 
     def folderitems(self):
@@ -82,6 +87,8 @@ class InstrumentsView(BikaListingView):
             items[x]['Model'] = obj.Model
 #            items[x]['ExpiryDate'] = obj.CalibrationExpiryDate and \
 #                obj.CalibrationExpiryDate.asdatetime().strftime(self.date_format_short) or ''
+            items[x]['Certificate'] = obj.getCurrentCertification() and \
+                obj.getCurrentCertification().Title() or ''
             items[x]['replace']['Title'] = "<a href='%s'>%s</a>" % \
                  (items[x]['url'], items[x]['Title'])
 

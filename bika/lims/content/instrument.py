@@ -1,5 +1,6 @@
 from AccessControl import ClassSecurityInfo
 from Products.ATContentTypes.content import schemata
+from Products.ATContentTypes.utils import DT2dt
 from Products.ATExtensions.ateapi import RecordsField
 from Products.Archetypes.atapi import *
 from Products.Archetypes.references import HoldingReference
@@ -11,6 +12,7 @@ from bika.lims.browser.widgets import RecordsWidget
 from bika.lims.config import PROJECTNAME
 from bika.lims.content.bikaschema import BikaSchema, BikaFolderSchema
 from bika.lims.interfaces import IInstrument
+from datetime import datetime
 from plone.app.folder.folder import ATFolder
 from zope.interface import implements
 
@@ -104,7 +106,17 @@ schema = BikaFolderSchema.copy() + BikaSchema.copy() + Schema((
             description = _("Use this field to pass arbitrary parameters to the export/import "
                             "modules."),
         ),
-    ),               
+    ),
+
+    StringField('CurrentCertificationUID',
+        searchable=True,
+        required=0,
+        widget=StringWidget(
+            visible = False,
+            label=_("Certification"),
+        )
+    ),
+
 ))
 schema['description'].widget.visible = True
 schema['description'].schemata = 'default'
@@ -193,12 +205,34 @@ class Instrument(ATFolder):
         return self.objectValues('InstrumentValidation')
     
     def getSchedule(self):
-        return self.objectValues('InstrumentScheduledTask')                                     
-#        pc = getToolByName(self, 'portal_catalog')
-#        uid = self.context.UID()
-#        return [p.getObject() for p in pc(portal_type='InstrumentScheduleTask',
-#                                          getInstrumentUID=uid)]
+        return self.objectValues('InstrumentScheduledTask')
 
-schemata.finalizeATCTSchema(schema, folderish = True, moveDiscussion = False)
+    def validCertificationAvailable(self):
+        """ Returns if the instrument has a valid certification available
+
+        A valid certification is an InstrumentCertification attached to the
+        current instance of Instrument with a valid certification date range:
+        current date must be between certification Validfrom and ValidTo.
+        Ignores the current state of the Instrument (Certified or Uncertified)
+
+        """
+        now = datetime.now()
+        for cert in self.getCertifications():
+            validfrom = DT2dt(cert.getValidFrom()).replace(tzinfo=None)
+            validto = DT2dt(cert.getValidTo()).replace(tzinfo=None)
+            if now >= validfrom and now <= validto:
+                return True
+        return False
+
+    def getCurrentCertification(self):
+        """ Returns the current certification applied to the instrument
+        """
+        certUID = self.getCurrentCertificationUID()
+        if certUID is not None:
+            for cert in self.getCertifications():
+                if cert.UID() == certUID:
+                    return cert
+
+schemata.finalizeATCTSchema(schema, folderish=True, moveDiscussion=False)
 
 registerType(Instrument, PROJECTNAME)

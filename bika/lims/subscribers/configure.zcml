@@ -99,6 +99,19 @@
            Products.DCWorkflow.interfaces.IAfterTransitionEvent"
       handler="bika.lims.subscribers.calculation.AfterTransitionEventHandler"
     />
+    
+    <!-- Event triggered when moving/removing/adding an InstrumentCertification -->
+    <subscriber
+      for="bika.lims.interfaces.IInstrumentCertification
+           zope.app.container.interfaces.IObjectMovedEvent"
+      handler="bika.lims.subscribers.instrumentcertification.MovedEventHandler"
+    />
+    <!-- Event triggered after modifying an InstrumentCertification -->
+    <subscriber
+      for="bika.lims.interfaces.IInstrumentCertification
+           zope.lifecycleevent.interfaces.IObjectModifiedEvent"
+      handler="bika.lims.subscribers.instrumentcertification.ModifiedEventHandler"
+    />
 
 
 </configure>
