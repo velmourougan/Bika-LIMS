@@ -92,3 +92,6 @@ CancelAndReinstate = 'BIKA: Cancel and reinstate'
 
 # For adding login credentials to Contacts.
 ManageLoginDetails = 'BIKA: Manage Login Details'
+
+# Field permissions
+EditARContact = "BIKA: Edit AR Contact"

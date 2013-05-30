@@ -6,6 +6,7 @@ from bika.lims.browser.analyses import AnalysesView
 from bika.lims.browser.bika_listing import WorkflowAction
 from bika.lims.browser.bika_listing import BikaListingView
 from bika.lims.browser.bika_listing import WorkflowAction
+from bika.lims.browser.header_table import HeaderTableView
 from bika.lims.browser.publish import doPublish
 from bika.lims.browser.sample import SamplePartitionsView
 from bika.lims.adapters.widgetvisibility import WidgetVisibility as _WV
@@ -559,7 +560,6 @@ class AnalysisRequestViewView(BrowserView):
 
     implements(IViewView)
     template = ViewPageTemplateFile("templates/analysisrequest_view.pt")
-    header_table = ViewPageTemplateFile("templates/header_table.pt")
     messages = []
 
     def __init__(self, context, request):
@@ -574,11 +574,6 @@ class AnalysisRequestViewView(BrowserView):
         checkPermission = self.context.portal_membership.checkPermission
         getAuthenticatedMember = self.context.portal_membership.getAuthenticatedMember
         workflow = getToolByName(self.context, 'portal_workflow')
-
-        ## Create header_table data rows
-        sample = self.context.getSample()
-        sp = sample.getSamplePoint()
-        st = sample.getSampleType()
 
         contact = self.context.getContact()
         contacts = []
@@ -601,258 +596,8 @@ class AnalysisRequestViewView(BrowserView):
             cc_emails.append(cc)
             cc_hrefs.append("<a href='mailto:%s'>%s</a>"%(cc, cc))
 
-        # Some sample fields are editable here
-        if workflow.getInfoFor(sample, 'cancellation_state') == "cancelled":
-            allow_sample_edit = False
-        else:
-            edit_states = ['to_be_sampled', 'to_be_preserved', 'sample_due']
-            allow_sample_edit = checkPermission(ManageSamples, sample) \
-                and workflow.getInfoFor(sample, 'review_state') in edit_states
-
-        SamplingWorkflowEnabled =\
-            self.context.bika_setup.getSamplingWorkflowEnabled()
-        samplers = getUsers(sample, ['Sampler', 'LabManager', 'Manager'])
-
-        samplingdeviations = DisplayList(
-            [(sd.UID, sd.title) for sd \
-             in bsc(portal_type = 'SamplingDeviation',
-                    inactive_state = 'active')])
-
-        sampleconditions = DisplayList(
-            [(sc.UID, sc.title) for sc \
-             in bsc(portal_type = 'SampleCondition',
-                    inactive_state = 'active')])
-
-        batch = self.context.getBatch()
-
-        self.header_columns = 3
-        self.header_rows = [
-            {'id': 'SampleID',
-             'title': _('Sample ID'),
-             'allow_edit': False,
-             'value': "<a href='%s'>%s</a>"%(sample.absolute_url(), sample.id),
-             'condition':True,
-             'type': 'text'},
-            {'id': 'BatchID',
-             'title': _('Batch ID'),
-             'allow_edit': False,
-             'value': batch and batch.getBatchID() or '',
-             'condition':True,
-             'type': 'text'},
-            {'id': 'Contact',
-             'title': "<a href='#' id='open_cc_browser'>%s</a>" % \
-                      (self.context.translate(_('Contact Person'))),
-             'allow_edit': False,
-             'value': "<input name='cc_uids' type='hidden' id='cc_uids' value='%s'/>\
-                       <a href='%s'><span name='primary_contact' id='primary_contact' value='%s'>%s</span></a>\
-                       &lt;<a href='mailto:%s'>%s</a>&gt;<br/>\
-                       <span name='cc_titles' id='cc_titles' value='%s'>%s</span>"\
-                       %(",".join(cc_uids),
-                         contact.absolute_url(),
-                         contact.UID(),
-                         contact.Title(),
-                         contact.getEmailAddress(),
-                         contact.getEmailAddress(),
-                         "; ".join(cc_titles),
-                         "<br/> ".join(ccemails)),
-             'condition':True,
-             'type': 'text'},
-            {'id': 'ClientSampleID',
-             'title': _('Client SID'),
-             'allow_edit': True,
-             'value': sample.getClientSampleID(),
-             'condition':True,
-             'type': 'text'},
-            {'id': 'ClientReference',
-             'title': _('Client Reference'),
-             'allow_edit': True,
-             'value': sample.getClientReference(),
-             'condition':True,
-             'type': 'text'},
-            {'id': 'ClientOrderNumber',
-             'title': _('Client Order'),
-             'allow_edit': True,
-             'value': self.context.getClientOrderNumber(),
-             'condition':True,
-             'type': 'text'},
-            {'id': 'SampleType',
-             'title': _('Sample Type'),
-             'allow_edit': allow_sample_edit,
-             'value': st and st.Title() or '',
-             'condition':True,
-             'type': 'text',
-             'required': True},
-            {'id': 'SampleMatrix',
-             'title': _('Sample Matrix'),
-             'allow_edit': False,
-             'value': st.getSampleMatrix() and st.getSampleMatrix().Title() or '',
-             'condition':True,
-             'type': 'text'},
-            {'id': 'SamplePoint',
-             'title': _('Sample Point'),
-             'allow_edit': allow_sample_edit,
-             'value': sp and sp.Title() or '',
-             'condition':True,
-             'type': 'text'},
-            {'id': 'Creator',
-             'title': PMF('Creator'),
-             'allow_edit': False,
-             'value': self.user_fullname(self.context.Creator()),
-             'condition':True,
-             'type': 'text'},
-            {'id': 'DateCreated',
-             'title': PMF('Date Created'),
-             'allow_edit': False,
-             'value': self.context.created(),
-             'condition':True,
-             'formatted_value': self.ulocalized_time(self.context.created()),
-             'type': 'text'},
-            {'id': 'SamplingDate',
-             'title': _('Sampling Date'),
-             'allow_edit': allow_sample_edit,
-             'value': self.ulocalized_time(
-                sample.getSamplingDate(), long_format=1),
-             'formatted_value': self.ulocalized_time(
-                self.context.getSamplingDate()),
-             'condition':True,
-             'class': 'datepicker',
-             'type': 'text'},
-            {'id': 'DateSampled',
-             'title': _('Date Sampled'),
-             'allow_edit': allow_sample_edit,
-             'value': sample.getDateSampled() and self.ulocalized_time(
-                sample.getDateSampled()) or '',
-             'formatted_value': sample.getDateSampled() and self.ulocalized_time(
-                sample.getDateSampled()) or '',
-             'condition':SamplingWorkflowEnabled,
-             'class': 'datepicker',
-             'type': 'text',
-             'required': True},
-            {'id': 'Sampler',
-             'title': _('Sampler'),
-             'allow_edit': allow_sample_edit,
-             'value': sample.getSampler(),
-             'formatted_value': sample.getSampler(),
-             'condition':SamplingWorkflowEnabled,
-             'vocabulary': samplers,
-             'type': 'choices',
-             'required': True},
-            {'id': 'SamplingDeviation',
-             'title': _('Sampling Deviation'),
-             'allow_edit': allow_sample_edit,
-             'value': sample.getSamplingDeviation() and sample.getSamplingDeviation().UID() or '',
-             'formatted_value': sample.getSamplingDeviation() and sample.getSamplingDeviation().Title() or '',
-             'condition':True,
-             'vocabulary': samplingdeviations,
-             'type': 'choices'},
-            {'id': 'SampleCondition',
-             'title': _('Sample Condition'),
-             'allow_edit': allow_sample_edit,
-             'value': sample.getSampleCondition() and sample.getSampleCondition().UID() or '',
-             'formatted_value': sample.getSampleCondition() and sample.getSampleCondition().Title() or '',
-             'condition':True,
-             'vocabulary': sampleconditions,
-             'type': 'choices'},
-            {'id': 'DateReceived',
-             'title': _('Date Received'),
-             'allow_edit': False,
-             'value': self.context.getDateReceived(),
-             'formatted_value': self.ulocalized_time(self.context.getDateReceived()),
-             'condition':True,
-             'type': 'text'},
-            {'id': 'Composite',
-             'title': _('Composite'),
-             'allow_edit': allow_sample_edit,
-             'value': sample.getComposite(),
-             'condition':True,
-             'type': 'boolean'},
-            {'id': 'AdHoc',
-             'title': _('Ad-Hoc'),
-             'allow_edit': allow_sample_edit,
-             'value': sample.getAdHoc(),
-             'condition':True,
-             'type': 'boolean'},
-            {'id': 'InvoiceExclude',
-             'title': _('Invoice Exclude'),
-             'allow_edit': True,
-             'value': self.context.getInvoiceExclude(),
-             'condition':True,
-             'type': 'boolean'},
-            {'id': 'ReportDryMatter',
-             'title': _('Report as Dry Matter'),
-             'allow_edit': allow_sample_edit,
-             'value': self.context.getReportDryMatter(),
-             'condition':self.context.bika_setup.getDryMatterService(),
-             'type': 'boolean'},
-        ]
-        self.header_buttons = [{'name':'save_button', 'title':_('Save')}]
-
-        ## handle_header table submit
-        if form.get('header_submitted', None):
-            plone.protect.CheckAuthenticator(form)
-            message = None
-            values = {
-                'CCContact':form.get('cc_uids','').split(",")
-            }
-            for row in [r for r in self.header_rows if r['allow_edit']]:
-                value = _u(urllib.unquote_plus(form.get(row['id'], '')))
-                if row['id'] == 'SampleType':
-                    if not value:
-                        message = PMF(
-                            u'error_required',
-                            default=u'${name} is required, please correct.',
-                            mapping={'name': _('Sample Type')})
-                        break
-                    if not bsc(portal_type = 'SampleType', title = value):
-                        message = _("${sampletype} is not a valid sample type",
-                                    mapping={'sampletype':value})
-                        break
-
-                if row['id'] == 'SamplePoint':
-                    value = value.replace("%s: " % _("Lab"), '')
-                    if value and \
-                       not bsc(portal_type = 'SamplePoint', title = value):
-                        message = _("${samplepoint} is not a valid sample point",
-                                    mapping={'samplepoint': value})
-                        break
-
-                values[row['id']] = value
-
-            # boolean - checkboxes are 'true'/'on' or 'false'/missing in form.
-            for row in [r for r in self.header_rows if r.get('type', '') == 'boolean']:
-                value = form.get(row['id'], 'false')
-                values[row['id']] = value == 'true' and True or value == 'on' and True or False
-
-            if not message:
-                self.context.edit(**values)
-                self.context.reindexObject()
-                sample.edit(**values)
-                sample.reindexObject()
-                ars = sample.getAnalysisRequests()
-                # Analyses and AnalysisRequets have calculated fields
-                # that are indexed; re-index all these objects.
-                for ar in ars:
-                    ar.reindexObject()
-                    analyses = sample.getAnalyses({'review_state':'to_be_sampled'})
-                    for a in analyses:
-                        a.getObject().reindexObject()
-                message = PMF("Changes saved.")
-
-            # If this sample was "To Be Sampled", and the
-            # Sampler and DateSampled fields were completed,
-            # do the Sampled transition.
-            if workflow.getInfoFor(sample, "review_state") == "to_be_sampled" \
-               and form.get("Sampler", None) \
-               and form.get("DateSampled", None):
-                # This transition does not invoke the regular WorkflowAction
-                # in analysisrequest.py
-                workflow.doActionFor(sample, "sample")
-                sample.reindexObject()
-
-            self.context.plone_utils.addPortalMessage(message, 'info')
-            url = self.context.absolute_url().split("?")[0]
-            self.request.RESPONSE.redirect(url)
-            return
+        ## render header table
+        self.header_table = HeaderTableView(self.context, self.request)
 
         ## Create Partitions View for this ARs sample
         p = SamplePartitionsView(self.context.getSample(), self.request)
