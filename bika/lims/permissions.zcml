@@ -86,5 +86,7 @@
 
 <permission id="bika.lims.ManageLoginDetails" title="BIKA: Manage Login Details"/>
 
+<!-- Field permissions -->
+<permission id="bika.lims.EditARContact" title="BIKA: Edit AR Contact"/>
 
 </configure>

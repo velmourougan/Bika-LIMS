@@ -2,6 +2,7 @@
 """
 from AccessControl import ClassSecurityInfo
 from AccessControl.Permissions import delete_objects
+from archetypes.referencebrowserwidget import ReferenceBrowserWidget
 from DateTime import DateTime
 from Products.ATContentTypes.content import schemata
 from Products.ATExtensions.widget.records import RecordsWidget
@@ -19,8 +20,8 @@ from Products.CMFPlone.utils import transaction_note
 from Products.CMFPlone.utils import safe_unicode
 from bika.lims.browser.fields import ARAnalysesField
 from bika.lims.browser.widgets import DateTimeWidget
-from bika.lims.config import PROJECTNAME, \
-    ManageInvoices
+from bika.lims.config import PROJECTNAME
+from bika.lims.permissions import *
 from bika.lims.content.bikaschema import BikaSchema
 from bika.lims.interfaces import IAnalysisRequest
 from bika.lims.interfaces import IBikaCatalog
@@ -49,43 +50,71 @@ schema = BikaSchema.copy() + Schema((
         'RequestID',
         required=1,
         searchable=True,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=StringWidget(
             label=_('Request ID'),
             description=_("The ID assigned to the client's request by the lab"),
-            visible={'edit': 'invisible', 'view': 'visible', 'add': 'invisible'},
+            visible={'header_table': 'visible',
+                     'edit': 'invisible',
+                     'view': 'visible',
+                     'add': 'invisible'},
         ),
     ),
     ReferenceField(
         'Contact',
         required=1,
-        vocabulary='getContacts',
         default_method='getContactUIDForUser',
         vocabulary_display_path_bound=sys.maxint,
         allowed_types=('Contact',),
         referenceClass=HoldingReference,
         relationship='AnalysisRequestContact',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=EditARContact,
         widget=ReferenceWidget(
             label=_("Contact"),
-            # we let this one alone, template does it separately.
-            visible={'edit': 'invisible', 'view': 'invisible', 'add': 'invisible'},
-            catalog_name='bika_catalog',
+            visible={'edit': 'visible',
+                     'view': 'visible'},
             base_query={'inactive_state': 'active'},
             showOn=True,
+            render_own_label=True,
         ),
     ),
     ReferenceField(
         'CCContact',
         multiValued=1,
-        vocabulary='getContacts',
         vocabulary_display_path_bound=sys.maxint,
         allowed_types=('Contact',),
         referenceClass=HoldingReference,
         relationship='AnalysisRequestCCContact',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=EditARContact,
+        widget=ReferenceBrowserWidget(
+            label=_("CC Contacts"),
+            visible={'edit': 'visible',
+                     'view': 'visible'},
+            allow_browse=True,
+            show_path=False,
+            hide_inaccessible=True,
+            restrict_browsing_to_startup_directory=True,
+            startup_directory_method='getClientPath',
+            base_query={'inactive_state': 'active'},
+            render_own_label=True,
+        ),
     ),
     StringField(
         'CCEmails',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=EditARContact,
         widget=StringWidget(
-            label=_('CC Emails')
+            label=_('CC Emails'),
+            visible={'edit': 'visible',
+                     'view': 'visible'},
+            render_own_label=True,
         ),
     ),
     ReferenceField(
@@ -93,12 +122,18 @@ schema = BikaSchema.copy() + Schema((
         required=1,
         allowed_types=('Client',),
         relationship='AnalysisRequestClient',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             label=_("Client"),
             description=_("You must assign this request to a client"),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible'},
+            visible={'header_table': 'invisible',
+                     'edit': 'invisible',
+                     'view': 'invisible',
+                     'add': 'visible'},
             base_query={'inactive_state': 'active'},
             showOn=True,
         ),
@@ -107,11 +142,17 @@ schema = BikaSchema.copy() + Schema((
         'Batch',
         allowed_types=('Batch',),
         relationship='AnalysisRequestBatch',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             label=_("Batch"),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible'},
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible'},
             catalog_name='bika_catalog',
             base_query={'review_state': 'open',
                         'cancelled_state': 'active'},
@@ -121,6 +162,9 @@ schema = BikaSchema.copy() + Schema((
     ComputedField(
         'BatchUID',
         expression='context.getBatch() and context.getBatch().UID() or None',
+        mode="r",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ComputedWidget(
             visible=False,
         ),
@@ -130,11 +174,17 @@ schema = BikaSchema.copy() + Schema((
         allowed_types=('ARTemplate',),
         referenceClass=HoldingReference,
         relationship='AnalysisRequestARTemplate',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             label=_("Template"),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
             catalog_name='bika_setup_catalog',
             base_query={'inactive_state': 'active'},
@@ -146,11 +196,18 @@ schema = BikaSchema.copy() + Schema((
         allowed_types=('AnalysisProfile',),
         referenceClass=HoldingReference,
         relationship='AnalysisRequestAnalysisProfile',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             label=_("Analysis Profile"),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible'},
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
+                     'secondary': 'invisible'},
             catalog_name='bika_setup_catalog',
             base_query={'inactive_state': 'active'},
             showOn=True,
@@ -162,60 +219,83 @@ schema = BikaSchema.copy() + Schema((
         allowed_types=('Sample',),
         referenceClass=HoldingReference,
         relationship='AnalysisRequestSample',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             label=_("Sample"),
             description=_("Select a sample to create a secondary AR"),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible'},
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible'},
             catalog_name='bika_catalog',
             base_query={'cancelled_state': 'active',
                         'review_state': ['sample_due', 'sample_received', ]},
             showOn=True,
         ),
     ),
-    # SamplingDate is set by the sample
-    # It's listed here so that it can be accessed from ar add.
+    # Sample field
     DateTimeField(
         'SamplingDate',
         required=1,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget = DateTimeWidget(
             label=_("Sampling Date"),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
         ),
     ),
-    # A sample field, listed here so that it can be accessed from ar add.
+    # Sample field
     ReferenceField(
         'SampleType',
         required=1,
         allowed_types='SampleType',
         relationship='AnalysisRequestSampleType',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             label=_("Sample Type"),
             description=_("Create a new sample of this type"),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
             catalog_name='bika_setup_catalog',
             base_query={'inactive_state': 'active'},
             showOn=True,
         ),
     ),
-    # A sample field, listed here so that it can be accessed from ar add.
+    # Sample field
     ReferenceField(
         'SamplePoint',
         allowed_types='SamplePoint',
         relationship='AnalysisRequestSamplePoint',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             label=_("Sample Point"),
             description=_("Location where sample was taken"),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
             catalog_name='bika_setup_catalog',
             base_query={'inactive_state': 'active'},
@@ -225,128 +305,197 @@ schema = BikaSchema.copy() + Schema((
     StringField(
         'ClientOrderNumber',
         searchable=True,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=StringWidget(
             label=_('Client Order Number'),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible'},
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible'},
         ),
     ),
-    # A sample field, listed here so that it can be accessed from ar add.
+    # Sample field
     StringField(
         'ClientReference',
         searchable=True,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=StringWidget(
             label=_('Client Reference'),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
         ),
     ),
-    # A sample field, listed here so that it can be accessed from ar add.
+    # Sample field
     StringField(
         'ClientSampleID',
         searchable=True,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=StringWidget(
             label=_('Client Sample ID'),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
         ),
     ),
-    # A sample field, listed here so that it can be accessed from ar add.
+    # Sample field
     ReferenceField('SamplingDeviation',
         allowed_types = ('SamplingDeviation',),
         relationship = 'AnalysisRequestSamplingDeviation',
         referenceClass = HoldingReference,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             label=_('Sampling Deviation'),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
             catalog_name='bika_setup_catalog',
             base_query={'inactive_state': 'active'},
             showOn=True,
         ),
     ),
-    # A sample field, listed here so that it can be accessed from ar add.
-    ReferenceField('SampleCondition',
+    # Sample field
+    ReferenceField(
+        'SampleCondition',
         allowed_types = ('SampleCondition',),
         relationship = 'AnalysisRequestSampleCondition',
         referenceClass = HoldingReference,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             label=_('Sample condition'),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
             catalog_name='bika_setup_catalog',
             base_query={'inactive_state': 'active'},
             showOn=True,
         ),
     ),
-    ReferenceField('DefaultContainerType',
+    ReferenceField(
+        'DefaultContainerType',
         allowed_types = ('ContainerType',),
         relationship = 'AnalysisRequestContainerType',
         referenceClass = HoldingReference,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             label=_('Default Container'),
             description=_('Default container for new sample partitions'),
             size=12,
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
             catalog_name='bika_setup_catalog',
             base_query={'inactive_state': 'active'},
             showOn=True,
         ),
     ),
-    # A sample field, listed here so that it can be accessed from ar add.
-    BooleanField('AdHoc',
+    # Sample field
+    BooleanField(
+        'AdHoc',
         default=False,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=BooleanWidget(
             label=_("Ad-Hoc"),
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
         ),
     ),
-    # A sample field, listed here so that it can be accessed from ar add.
-    BooleanField('Composite',
+    # Sample field
+    BooleanField(
+        'Composite',
         default=False,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=BooleanWidget(
             label=_("Composite"),
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible',
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
                      'secondary': 'invisible'},
         ),
     ),
     BooleanField(
         'ReportDryMatter',
         default=False,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=BooleanWidget(
             label=_('Report as Dry Matter'),
             render_own_label=True,
             description=_('These results can be reported as dry matter'),
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible'},
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
+                     'secondary': 'visible'},
         ),
     ),
     BooleanField(
         'InvoiceExclude',
         default=False,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=BooleanWidget(
             label=_('Invoice Exclude'),
             description=_('Select if analyses to be excluded from invoice'),
             render_own_label=True,
-            visible={'edit': 'visible', 'view': 'visible', 'add': 'visible'},
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'visible',
+                     'secondary': 'visible'},
         ),
     ),
     ARAnalysesField(
         'Analyses',
         required=1,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
     ),
     ReferenceField(
         'Attachment',
@@ -354,6 +503,9 @@ schema = BikaSchema.copy() + Schema((
         allowed_types=('Attachment',),
         referenceClass=HoldingReference,
         relationship='AnalysisRequestAttachment',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
     ),
     ReferenceField(
         'Invoice',
@@ -361,21 +513,34 @@ schema = BikaSchema.copy() + Schema((
         allowed_types=('Invoice',),
         referenceClass=HoldingReference,
         relationship='AnalysisRequestInvoice',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
     ),
     DateTimeField(
         'DateReceived',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=DateTimeWidget(
             label=_('Date Received'),
-            visible={'edit': 'invisible', 'view': 'visible',
-                'add': 'invisible'},
+            visible={'header_table': 'visible',
+                     'edit': 'invisible',
+                     'view': 'visible',
+                     'add': 'invisible'},
         ),
     ),
     DateTimeField(
         'DatePublished',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=DateTimeWidget(
             label=_('Date Published'),
-            visible={'edit': 'invisible', 'view': 'visible',
-                'add': 'invisible'},
+            visible={'header_table': 'visible',
+                     'edit': 'invisible',
+                     'view': 'visible',
+                     'add': 'invisible'},
         ),
     ),
     TextField(
@@ -384,6 +549,9 @@ schema = BikaSchema.copy() + Schema((
         default_content_type='text/x-web-intelligent',
         allowable_content_types=('text/x-web-intelligent',),
         default_output_type="text/html",
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=TextAreaWidget(
             macro="bika_widgets/remarks",
             label=_('Remarks'),
@@ -393,6 +561,9 @@ schema = BikaSchema.copy() + Schema((
     FixedPointField(
         'MemberDiscount',
         default_method='getDefaultMemberDiscount',
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=DecimalWidget(
             label=_('Member discount %'),
             description=_('Enter percentage value eg. 33.0'),
@@ -401,8 +572,14 @@ schema = BikaSchema.copy() + Schema((
     ComputedField(
         'DateSampled',
         expression="here.getSample() and here.getSample().getDateSampled() or ''",
-        widget=ComputedWidget(
-            visible=False,
+        mode="r",
+        read_permission=permissions.View,
+        widget=StringWidget(
+            label=_('Date Sampled'),
+            visible={'header_table': 'visible',
+                     'edit': 'visible',
+                     'view': 'visible',
+                     'add': 'invisible'},
         ),
     ),
     ComputedField(
@@ -416,7 +593,7 @@ schema = BikaSchema.copy() + Schema((
     ComputedField(
         'SampleTypeTitle',
         searchable=True,
-        expression="here.getSample() and here.getSample().getSampleType() and here.getSample().getSampleType().Title() or ''",
+        expression="here.getSampleType().Title() if here.getSampleType() else ''",
         widget=ComputedWidget(
             visible=False,
         ),
@@ -424,7 +601,7 @@ schema = BikaSchema.copy() + Schema((
     ComputedField(
         'SamplePointTitle',
         searchable=True,
-        expression="here.getSample() and here.getSample().getSamplePoint() and here.getSample().getSamplePoint().Title() or ''",
+        expression="here.getSamplePoint().Title() if here.getSamplePoint() else ''",
         widget=ComputedWidget(
             visible=False,
         ),
@@ -470,6 +647,9 @@ schema = BikaSchema.copy() + Schema((
         allowed_types = ('AnalysisRequest',),
         relationship = 'AnalysisRequestChildAnalysisRequest',
         referenceClass = HoldingReference,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             visible=False,
         ),
@@ -479,6 +659,9 @@ schema = BikaSchema.copy() + Schema((
         allowed_types = ('AnalysisRequest',),
         relationship = 'AnalysisRequestParentAnalysisRequest',
         referenceClass = HoldingReference,
+        mode="rw",
+        read_permission=permissions.View,
+        write_permission=permissions.ModifyPortalContent,
         widget=ReferenceWidget(
             visible=False,
         ),
@@ -518,6 +701,9 @@ class AnalysisRequest(BaseFolder):
         if self.aq_parent.portal_type == 'Client':
             return self.aq_parent
 
+    def getClientPath(self):
+        return "/".join(self.aq_parent.getPhysicalPath())
+
     def getClientTitle(self):
         client = self.getClient()
         if client:
@@ -527,10 +713,6 @@ class AnalysisRequest(BaseFolder):
 
     def getContactTitle(self):
         value = self.getContact().Title() if self.getContact() else ''
-        return value
-
-    def getClientTitle(self):
-        value = self.aq_parent.Title()
         return value
 
     def getProfileTitle(self):
@@ -925,5 +1107,117 @@ class AnalysisRequest(BaseFolder):
         while (child and child.getChildAnalysisRequest()):
             child = child.getChildAnalysisRequest()
         return child
+
+    # Then a string of fields which are defined on the AR, but need to be set
+    # and read from the sample
+
+    security.declarePublic('setSamplingDate')
+    def setSamplingDate(self, value):
+        sample = self.getSample()
+        if sample:
+            return sample.setSamplingDate(value)
+
+    security.declarePublic('getSamplingDate')
+    def getSamplingDate(self):
+        sample = self.getSample()
+        if sample:
+            return sample.getSamplingDate()
+
+    security.declarePublic('setSamplePoint')
+    def setSamplePoint(self, value):
+        sample = self.getSample()
+        if sample:
+            return sample.setSamplePoint(value)
+
+    security.declarePublic('getSamplepoint')
+    def getSamplePoint(self):
+        sample = self.getSample()
+        if sample:
+            return sample.getSamplePoint()
+
+    security.declarePublic('setSampleType')
+    def setSampleType(self, value):
+        sample = self.getSample()
+        if sample:
+            return sample.setSampleType(value)
+
+    security.declarePublic('getSampleType')
+    def getSampleType(self):
+        sample = self.getSample()
+        if sample:
+            return sample.getSampleType()
+
+    security.declarePublic('setClientReference')
+    def setClientReference(self, value):
+        sample = self.getSample()
+        if sample:
+            return sample.setClientReference(value)
+
+    security.declarePublic('getClientReference')
+    def getClientReference(self):
+        sample = self.getSample()
+        if sample:
+            return sample.getClientReference()
+
+    security.declarePublic('setClientSampleID')
+    def setClientSampleID(self, value):
+        sample = self.getSample()
+        if sample:
+            return sample.setClientSampleID(value)
+
+    security.declarePublic('getClientSampleID')
+    def getClientSampleID(self):
+        sample = self.getSample()
+        if sample:
+            return sample.getClientSampleID()
+
+    security.declarePublic('setSamplingDeviation')
+    def setSamplingDeviation(self, value):
+        sample = self.getSample()
+        if sample:
+            return sample.setSamplingDeviation(value)
+
+    security.declarePublic('getSamplingDeviation')
+    def getSamplingDeviation(self):
+        sample = self.getSample()
+        if sample:
+            return sample.getSamplingDeviation()
+
+    security.declarePublic('setSampleCondition')
+    def setSampleCondition(self, value):
+        sample = self.getSample()
+        if sample:
+            return sample.setSampleCondition(value)
+
+    security.declarePublic('getSampleCondition')
+    def getSampleCondition(self):
+        sample = self.getSample()
+        if sample:
+            return sample.getSampleCondition()
+
+    security.declarePublic('setComposite')
+    def setComposite(self, value):
+        sample = self.getSample()
+        if sample:
+            return sample.setComposite(value)
+
+    security.declarePublic('getComposite')
+    def getComposite(self):
+        sample = self.getSample()
+        if sample:
+            return sample.getComposite()
+
+    security.declarePublic('setAdHoc')
+    def setAdHoc(self, value):
+        sample = self.getSample()
+        if sample:
+            return sample.setAdHoc(value)
+
+    security.declarePublic('getAdHoc')
+    def getAdHoc(self):
+        sample = self.getSample()
+        if sample:
+            return sample.getAdHoc()
+
 
 atapi.registerType(AnalysisRequest, PROJECTNAME)

@@ -13,7 +13,8 @@ class HeaderTableView(BrowserView):
     def __call__(self):
         self.errors = {}
         if 'header_table_submitted' in self.request:
-            pass
+            import pdb; pdb.set_trace()
+            return self.template()
         else:
             return self.template()
 
@@ -30,7 +31,7 @@ class HeaderTableView(BrowserView):
         # Generate only filled columns
         final = []
         for i in range(3):
-            column = input_list[i*sublist_len:_list_end(i)]
+            column = input_list[i * sublist_len:_list_end(i)]
             if len(column) > 0:
                 final.append(column)
         return final
@@ -43,13 +44,13 @@ class HeaderTableView(BrowserView):
             fieldname = field.getName()
             widget = field.widget
             visible = schema[fieldname].widget.visible
-            if visible and isinstance(visible, dict):
-                if 'edit' in visible and visible['edit'] == 'visible':
+            if isinstance(visible, dict) and 'header_table' in visible:
+                if visible.get('edit', 'invisible') == 'visible':
                     ret.append({'field': field,
                                 'widget': widget,
                                 'mode': 'edit'})
                     continue
-                if 'view' in visible and visible['view'] == 'visible':
+                elif visible.get('view', 'invisible') == 'visible':
                     ret.append({'field': field,
                                 'widget': widget,
                                 'mode': 'view'})
