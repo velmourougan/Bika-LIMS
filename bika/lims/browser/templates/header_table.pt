@@ -26,7 +26,7 @@
           condition="python:'Contact' in context.Schema()"
           define="edit_mode python:'edit' if checkPermission('View', context) else 'view';
                   errors python: {};">
-        <table class="header_table">
+        <table class="header_contact">
           <tr>
             <td><span i18n:translate="">Contact</span></td>
             <td><metal:field use-macro="python:context.widget('Contact', mode=edit_mode)"/></td>
