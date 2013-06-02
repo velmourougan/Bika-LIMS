@@ -4,6 +4,7 @@ view and edit screens.
 
 from bika.lims.browser import BrowserView
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
+from Products.CMFPlone import PloneMessageFactory as _p
 
 
 class HeaderTableView(BrowserView):
@@ -13,10 +14,21 @@ class HeaderTableView(BrowserView):
     def __call__(self):
         self.errors = {}
         if 'header_table_submitted' in self.request:
-            import pdb; pdb.set_trace()
-            return self.template()
-        else:
-            return self.template()
+            schema = self.context.Schema()
+            fields = schema.fields()
+            form = self.request.form
+            for field in fields:
+                fieldname = field.getName()
+                if fieldname in form:
+                    if fieldname + "_uid" in form:
+                        # references (process_form would normally do *_uid trick)
+                        field.getMutator(self.context)(form[fieldname + "_uid"])
+                    else:
+                        # other fields
+                        field.getMutator(self.context)(form[fieldname])
+            message = _p("Changes saved.")
+            self.context.plone_utils.addPortalMessage(message, 'info')
+        return self.template()
 
     def three_column_list(self, input_list):
         list_len = len(input_list)
